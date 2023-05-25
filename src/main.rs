@@ -1,4 +1,5 @@
 use sdl2::event::Event;
+use sdl2::keyboard::Keycode;
 use sdl2::mouse::MouseButton;
 use sdl2::pixels::Color;
 use sdl2::rect::Point;
@@ -7,6 +8,7 @@ use sdl2::render::{Canvas, TextureCreator};
 use sdl2::ttf::Font;
 use sdl2::video::{Window, WindowContext};
 use std::collections::HashMap;
+use std::io::Write;
 
 /*
  * Enigma machine encryption:
@@ -19,7 +21,7 @@ use std::collections::HashMap;
  * Output letter
  * */
 
-const ALPHABET: &str = "abcdefghijklmnopqrstuvwxyz";
+const REFLECTOR: &str = "yruhqsldpxngokmiebfzcwvjat";
 
 struct Rotor<'a> {
     current_value: u8,
@@ -79,12 +81,25 @@ fn encode(ch: u8, plugboard: &HashMap<u8, u8>, rotors: &mut [Rotor; 3]) -> char 
     }
 
     //Go through rotors
-    let rotors_len = rotors.len();
-    for i in 0..rotors_len {}
+    for i in 0..3 {
+        let index = ((encoded - b'a' + 26 - rotors[i].current_value) % 26) as usize;
+        encoded = rotors[i].code_string.as_bytes()[index];
+    }
+
+    encoded = REFLECTOR.as_bytes()[(encoded - b'a') as usize];
 
     //Go through rotors again
-    for i in 0..rotors_len {
-        let ind = rotors_len - 1 - i;
+    for i in 0..3 {
+        let ind = 2 - i;
+
+        let mut index = 0;
+        for j in 0..26 {
+            if rotors[ind].code_string.as_bytes()[j] == encoded {
+                index = (j + rotors[ind].current_value as usize) % 26;
+                break;
+            }
+        }
+        encoded = index as u8 + b'a';
     }
 
     //Go through plugboard again
@@ -158,7 +173,7 @@ fn main() -> Result<(), String> {
             16,
             &font,
             "Enigma Machine",
-            Color::WHITE,
+            Color::YELLOW,
             8,
         )
         .map_err(|e| e.to_string())?;
@@ -186,7 +201,8 @@ fn main() -> Result<(), String> {
                     && can_click
                 {
                     let encoded = encode(ch, &plugboard, &mut rotors);
-                    println!("{encoded}");
+                    print!("{encoded}");
+                    ::std::io::stdout().flush().map_err(|e| e.to_string())?;
 
                     can_click = false;
                 }
@@ -213,7 +229,7 @@ fn main() -> Result<(), String> {
             316,
             &font,
             "Plugboard",
-            Color::WHITE,
+            Color::GREEN,
             8,
         )
         .map_err(|e| e.to_string())?;
@@ -338,6 +354,31 @@ fn main() -> Result<(), String> {
                     mouse_btn: MouseButton::Left,
                     ..
                 } => can_click = true,
+                //Reset rotors
+                Event::KeyDown {
+                    keycode: Some(Keycode::Escape),
+                    ..
+                } => {
+                    rotors[0].current_value = 0;
+                    rotors[1].current_value = 0;
+                    rotors[2].current_value = 0;
+                    println!();
+                }
+                Event::KeyDown {
+                    keycode: Some(k), ..
+                } => {
+                    if k.to_string().len() == 1 {
+                        print!(
+                            "{}",
+                            encode(
+                                k.to_string().as_bytes()[0].to_ascii_lowercase(),
+                                &plugboard,
+                                &mut rotors
+                            )
+                        );
+                    }
+                    ::std::io::stdout().flush().map_err(|e| e.to_string())?;
+                }
                 _ => {}
             }
         }
