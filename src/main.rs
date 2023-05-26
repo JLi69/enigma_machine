@@ -157,6 +157,8 @@ fn main() -> Result<(), String> {
         },
     ];
 
+	let mut rotor_start_pos = [ 0, 0, 0 ];
+
     let mut plugboard = HashMap::<u8, u8>::new();
     for ch in b'a'..(b'z' + 1 as u8) {
         plugboard.insert(ch, ch);
@@ -329,11 +331,37 @@ fn main() -> Result<(), String> {
         .map_err(|e| e.to_string())?;
 
         for i in 0..rotors.len() {
-            display_text_left_justify(
+            let x = 620 + i as i32 * 32; 
+			let y = 48;
+
+			let mouse_x = event_pump.mouse_state().x();
+            let mouse_y = event_pump.mouse_state().y();
+
+            if (x + 16 - mouse_x) * (x + 16 - mouse_x) + (y + 16 - mouse_y) * (y + 16 - mouse_y)
+                < 16 * 16 {
+
+				canvas.set_draw_color(Color::CYAN);
+                canvas
+                    .draw_rect(Rect::new(x, y, 32, 32))
+                    .map_err(|e| e.to_string())?;
+
+                if event_pump
+                    .mouse_state()
+                    .is_mouse_button_pressed(MouseButton::Left)
+                    && can_click
+                {
+					rotors[i].current_value += 1;
+					rotors[i].current_value %= 26;
+					rotor_start_pos[i] = rotors[i].current_value;
+					can_click = false;
+				}
+			}
+
+			display_text_left_justify(
                 &mut canvas,
                 &texture_creator,
-                620 + i as i32 * 32,
-                48,
+                x,
+                y,
                 &font,
                 ((rotors[i].current_value + b'a') as char)
                     .to_string()
@@ -359,15 +387,18 @@ fn main() -> Result<(), String> {
                     keycode: Some(Keycode::Escape),
                     ..
                 } => {
-                    rotors[0].current_value = 0;
-                    rotors[1].current_value = 0;
-                    rotors[2].current_value = 0;
+					for i in 0..3 {
+						rotors[i].current_value = rotor_start_pos[i];	
+					}
                     println!();
                 }
                 Event::KeyDown {
                     keycode: Some(k), ..
                 } => {
-                    if k.to_string().len() == 1 {
+                    if k.to_string().len() == 1
+                        && k.to_string().as_bytes()[0].to_ascii_lowercase() >= b'a'
+                        && k.to_string().as_bytes()[0].to_ascii_lowercase() <= b'z'
+                    {
                         print!(
                             "{}",
                             encode(
@@ -376,13 +407,15 @@ fn main() -> Result<(), String> {
                                 &mut rotors
                             )
                         );
-                    }
-                    ::std::io::stdout().flush().map_err(|e| e.to_string())?;
+						::std::io::stdout().flush().map_err(|e| e.to_string())?;
+					}
                 }
                 _ => {}
             }
         }
     }
+
+    println!();
 
     Ok(())
 }
