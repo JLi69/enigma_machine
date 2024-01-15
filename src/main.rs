@@ -47,7 +47,7 @@ fn main() -> Result<(), String> {
 
     let mut state = AppState {
         can_quit: false,
-        can_click: false,
+        can_click: true,
         selected_plugboard: None,
         rotors: DEFAULT_ROTOR_STATE,
         rotor_start_pos: [0, 0, 0],
