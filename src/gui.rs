@@ -9,6 +9,8 @@ use sdl2::video::{Window, WindowContext};
 use sdl2::EventPump;
 use std::collections::HashMap;
 
+pub struct Text<'a>(Texture<'a>, u32, i32, i32);
+
 fn dist(x1: i32, y1: i32, x2: i32, y2: i32) -> f64 {
     (((x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2)) as f64).sqrt()
 }
@@ -43,14 +45,10 @@ fn display_text(
 
 pub fn display_plugboard(
     canvas: &mut Canvas<Window>,
-    texture_creator: &TextureCreator<WindowContext>,
-    font: &Font,
     event_pump: &EventPump,
-) -> Result<(), String> {
-    let (texture, len) = create_text_texture("Plugboard", texture_creator, font, Color::GREEN)?;
-    display_text(canvas, &texture, len, 16, 316, 8)?;
-
-    for ch in b'a'..(b'z' + 1_u8) {
+    letters: &[Texture]
+) -> Result<(), String> { 
+    for ch in b'a'..=b'z' {
         let offset = (ch - b'a') as i32;
         let x = 16 + (offset % 8) * 72;
         let y = 348 + (offset / 8) * 64;
@@ -65,9 +63,7 @@ pub fn display_plugboard(
                 .map_err(|e| e.to_string())?;
         }
 
-        let text = (ch as char).to_string();
-        let (texture, len) = create_text_texture(&text, texture_creator, font, Color::WHITE)?;
-        display_text(canvas, &texture, len, x, y, 16)?;
+        display_text(canvas, &letters[(ch - b'a') as usize], 1, x, y, 16)?;
     }
 
     Ok(())
@@ -75,9 +71,8 @@ pub fn display_plugboard(
 
 pub fn display_keyboard(
     canvas: &mut Canvas<Window>,
-    texture_creator: &TextureCreator<WindowContext>,
-    font: &Font,
     event_pump: &EventPump,
+    letters: &[Texture],
 ) -> Result<(), String> {
     for ch in b'a'..(b'z' + 1_u8) {
         let offset = (ch - b'a') as i32;
@@ -94,9 +89,7 @@ pub fn display_keyboard(
                 .map_err(|e| e.to_string())?;
         }
 
-        let text = (ch as char).to_string();
-        let (texture, len) = create_text_texture(&text, texture_creator, font, Color::WHITE)?;
-        display_text(canvas, &texture, len, x, y, 16)?;
+        display_text(canvas, &letters[(ch - b'a') as usize], 1, x, y, 16)?;
     }
 
     Ok(())
@@ -109,9 +102,6 @@ pub fn display_rotors(
     event_pump: &EventPump,
     rotors: &[Rotor; 3],
 ) -> Result<(), String> {
-    let (texture, len) = create_text_texture("Rotors", texture_creator, font, Color::WHITE)?;
-    display_text(canvas, &texture, len, 620, 16, 8)?;
-
     for (i, rotor) in rotors.iter().enumerate() {
         let x = 620 + i as i32 * 32;
         let y = 48;
@@ -153,14 +143,30 @@ pub fn draw_wires(canvas: &mut Canvas<Window>, plugboard: &HashMap<u8, u8>) -> R
     Ok(())
 }
 
+pub fn create_title_text<'a>(
+    texture_creator: &'a TextureCreator<WindowContext>,
+    font: &Font
+) -> Result<Vec<Text<'a>>, String> {
+    let (title_text, title_len) = 
+        create_text_texture("Enigma Machine", texture_creator, font, Color::YELLOW)?;
+    let (rotors_text, rotors_len) = 
+        create_text_texture("Rotors", texture_creator, font, Color::WHITE)?;
+    let (plugboard_text, plugboard_len) = 
+        create_text_texture("Plugboard", texture_creator, font, Color::GREEN)?;
+    Ok(vec! [
+        Text(title_text, title_len, 16, 16),
+        Text(rotors_text, rotors_len, 620, 16),
+        Text(plugboard_text, plugboard_len, 16, 316),
+    ])
+}
+
 pub fn display_title(
     canvas: &mut Canvas<Window>,
-    texture_creator: &TextureCreator<WindowContext>,
-    font: &Font,
+    text: &[Text]
 ) -> Result<(), String> {
-    let (texture, len) =
-        create_text_texture("Enigma Machine", texture_creator, font, Color::YELLOW)?;
-    display_text(canvas, &texture, len, 16, 16, 8)?;
+    for Text(texture, len, x, y) in text {
+        display_text(canvas, texture, *len, *x, *y, 8)?;
+    }  
     Ok(())
 }
 
@@ -181,4 +187,16 @@ pub fn init_canvas(ctx: &sdl2::Sdl) -> Result<Canvas<Window>, String> {
 pub fn clear_screen(canvas: &mut Canvas<Window>) {
     canvas.set_draw_color(Color::BLACK);
     canvas.clear();
+}
+
+pub fn letter_textures<'a>(
+    font: &Font,
+    texture_creator: &'a TextureCreator<WindowContext>
+) -> Vec<Texture<'a>> {
+    (b'a'..=b'z')
+        .map(|ch| (ch as char).to_string())
+        .map(|ch| create_text_texture(&ch, texture_creator, font, Color::WHITE))
+        .filter(|res| res.is_ok())
+        .map(|res| res.unwrap().0)
+        .collect()
 }

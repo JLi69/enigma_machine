@@ -60,7 +60,7 @@ pub fn handle_keyboard_click(
     plugboard: &HashMap<u8, u8>,
     rotors: &mut [Rotor; 3],
 ) {
-    for ch in b'a'..(b'z' + 1_u8) {
+    for ch in b'a'..=b'z' {
         let offset = (ch - b'a') as i32;
         let x = 16 + (offset % 8) * 72;
         let y = 48 + (offset / 8) * 64;
@@ -102,7 +102,7 @@ pub fn handle_plugboard_click(
     selected_plugboard: Option<u8>,
     can_click: &mut bool,
 ) -> Option<u8> {
-    for ch in b'a'..(b'z' + 1_u8) {
+    for ch in b'a'..=b'z' {
         let offset = (ch - b'a') as i32;
         let x = 16 + (offset % 8) * 72;
         let y = 348 + (offset / 8) * 64;

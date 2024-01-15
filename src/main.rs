@@ -6,9 +6,11 @@ mod handle_input;
 
 use engima_machine::{create_plugboard, Rotor, DEFAULT_ROTOR_STATE};
 use gui::{
-    clear_screen, display_keyboard, display_plugboard, display_rotors, display_title, draw_wires,
+    clear_screen, display_keyboard, display_plugboard, display_rotors, display_title, draw_wires, letter_textures
 };
 use handle_input::{handle_keyboard_click, handle_plugboard_click, process_events, update_rotors};
+
+use crate::gui::create_title_text;
 
 /*
  * Enigma machine encryption:
@@ -39,6 +41,9 @@ fn main() -> Result<(), String> {
     let font_ctx = sdl2::ttf::init().unwrap();
     let font = font_ctx.load_font(FONT_PATH, 32).unwrap();
     let texture_creator = canvas.texture_creator();
+    let letter_textures = letter_textures(&font, &texture_creator);
+    assert_eq!(letter_textures.len(), 26);
+    let title_text = create_title_text(&texture_creator, &font)?;
 
     let mut state = AppState {
         can_quit: false,
@@ -52,11 +57,11 @@ fn main() -> Result<(), String> {
     while !state.can_quit {
         clear_screen(&mut canvas);
         //Title
-        display_title(&mut canvas, &texture_creator, &font)?;
+        display_title(&mut canvas, &title_text)?;
         //Display keyboard
-        display_keyboard(&mut canvas, &texture_creator, &font, &event_pump)?;
+        display_keyboard(&mut canvas, &event_pump, &letter_textures)?;
         //Display plugboard
-        display_plugboard(&mut canvas, &texture_creator, &font, &event_pump)?;
+        display_plugboard(&mut canvas, &event_pump, &letter_textures)?;
         //Draw wires
         draw_wires(&mut canvas, &state.plugboard)?;
         //Display rotors
